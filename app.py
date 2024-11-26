@@ -13,13 +13,26 @@ def fitness_function(x):
     prediction = model.predict(x_scaled)
     return prediction[0]  # Minimize predicted power consumption
 
+# Function to suggest changes to parameters based on optimization results
+def suggest_changes(optimized_solution):
+    suggestions = []
+    for i, val in enumerate(optimized_solution):
+        if val < original_values[i]:
+            suggestions.append(f"Reduce {feature_names[i]} to {val:.2f}")
+        elif val > original_values[i]:
+            suggestions.append(f"Increase {feature_names[i]} to {val:.2f}")
+        else:
+            suggestions.append(f"Keep {feature_names[i]} unchanged")
+    return suggestions
+
 # Main Streamlit application
 def main():
     st.title("Power Consumption Optimization - Cement Industry")
 
     st.write("""
     This application allows you to upload a dataset, optimize the power consumption,
-    and generate a new dataset with optimized feature values.
+    and generate a new dataset with optimized feature values. It also provides suggestions 
+    for which parameters should be modified to reduce power consumption.
     """)
 
     uploaded_file = st.file_uploader("Upload your dataset (CSV format)", type=["csv"])
@@ -75,16 +88,10 @@ def main():
             [0, 10],      # Maintenance Downtime (hrs)
         ])
 
-        algorithm_params = {
-            'max_num_iteration': 100,
-            'population_size': 50,
-            'mutation_probability': 0.1,
-            'elit_ratio': 0.01,
-            'crossover_probability': 0.5,
-            'parents_portion': 0.3,
-            'crossover_type': 'uniform',
-            'max_iteration_without_improv': None
-        }
+        # Get the original values of the features
+        global original_values, feature_names
+        original_values = features.iloc[0].values
+        feature_names = features.columns.tolist()
 
         # Run Genetic Algorithm Optimization
         st.write("Optimizing... This may take a few moments.")
@@ -92,7 +99,16 @@ def main():
                       dimension=11,
                       variable_type='real',
                       variable_boundaries=variable_boundaries,
-                      algorithm_parameters=algorithm_params)
+                      algorithm_parameters={
+                          'max_num_iteration': 100,
+                          'population_size': 50,
+                          'mutation_probability': 0.1,
+                          'elit_ratio': 0.01,
+                          'crossover_probability': 0.5,
+                          'parents_portion': 0.3,
+                          'crossover_type': 'uniform',
+                          'max_iteration_without_improv': None
+                      })
 
         model_ga.run()
         optimized_solution = model_ga.output_dict['variable']
@@ -105,6 +121,12 @@ def main():
 
         st.write("Optimized Dataset (First 5 Rows):")
         st.write(optimized_data.head())
+
+        # Suggest parameter changes to reduce power consumption
+        st.write("Suggested Changes to Reduce Power Consumption:")
+        suggestions = suggest_changes(optimized_solution)
+        for suggestion in suggestions:
+            st.write(suggestion)
 
         # Save optimized dataset to CSV
         optimized_file_path = "optimized_cement_industry_data.csv"
