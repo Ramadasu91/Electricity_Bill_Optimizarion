@@ -7,23 +7,12 @@ from geneticalgorithm import geneticalgorithm as ga
 
 # Define the fitness function for optimization
 def fitness_function(x):
-    # Scale the inputs
+    # x represents the input variables (fixed) for which we need to minimize the power consumed
+    # Scale the inputs for prediction
     x_scaled = scaler.transform([x])
     # Predict power consumption
     prediction = model.predict(x_scaled)
     return prediction[0]  # Minimize predicted power consumption
-
-# Function to suggest changes to parameters based on optimization results
-def suggest_changes(optimized_solution):
-    suggestions = []
-    for i, val in enumerate(optimized_solution):
-        if val < original_values[i]:
-            suggestions.append(f"Reduce {feature_names[i]} to {val:.2f}")
-        elif val > original_values[i]:
-            suggestions.append(f"Increase {feature_names[i]} to {val:.2f}")
-        else:
-            suggestions.append(f"Keep {feature_names[i]} unchanged")
-    return suggestions
 
 # Main Streamlit application
 def main():
@@ -31,8 +20,8 @@ def main():
 
     st.write("""
     This application allows you to upload a dataset, optimize the power consumption,
-    and generate a new dataset with optimized feature values. It also provides suggestions 
-    for which parameters should be modified to reduce power consumption.
+    and generate a new dataset with minimized target values for power consumption. 
+    The input variables remain unchanged, and the target variable is minimized.
     """)
 
     uploaded_file = st.file_uploader("Upload your dataset (CSV format)", type=["csv"])
@@ -116,17 +105,11 @@ def main():
 
         # Generate optimized dataset
         optimized_data = data.copy()
-        optimized_data.iloc[:, :-1] = scaler.inverse_transform(np.tile(optimized_solution, (data.shape[0], 1)))
+        # Use the optimized power consumption prediction to create the optimized target
         optimized_data["Power Consumed (kWh)"] = predicted_min_power
 
         st.write("Optimized Dataset (First 5 Rows):")
         st.write(optimized_data.head())
-
-        # Suggest parameter changes to reduce power consumption
-        st.write("Suggested Changes to Reduce Power Consumption:")
-        suggestions = suggest_changes(optimized_solution)
-        for suggestion in suggestions:
-            st.write(suggestion)
 
         # Save optimized dataset to CSV
         optimized_file_path = "optimized_cement_industry_data.csv"
